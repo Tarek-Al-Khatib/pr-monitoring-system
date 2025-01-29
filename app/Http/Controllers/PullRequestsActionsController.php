@@ -13,7 +13,7 @@ class PullRequestsActionsController extends Controller
     private $issuesULR = "https://api.github.com/search/issues";
 
 
-    private function loopThroughResponse($q = null, $url) {
+    private function loopThroughResponse($q, $url) {
         $data = [];
         $page = 1;
         do {
