@@ -29,36 +29,25 @@ class PullRequestsActionsController extends Controller
         try {
             $page = 1;
             $data = [];
-            $cutoffTimestamp = strtotime(gmdate("Y-m-d H:i:s")) - (14 * 24 * 60 * 60);
+            $query = "repo:woocommerce/woocommerce type:pr is:open created:<" . now()->subDays(14)->format("Y-m-d");
 
             do {
                 $response = Http::withHeaders([
                     "Authorization" => "Bearer " . env("GITHUB_ACCESS_TOKEN"),
                     "Accept" => "application/vnd.github.v3+json"
-                ])->get($this->pullRequestURL, [
+                ])->get($this->issuesULR, [
+                    "q" => $query,
                     "per_page" => 100,
                     "page" => $page,
                 ]);
-                $currentPageData = $response->json();
+                $currentPageData = $response->json()["items"];
     
                 $data = array_merge($data, $currentPageData);
                 $page++;
             } while (!empty($currentPageData));
             
-            $oldPRs = array_filter($data, function ($pr) use ($cutoffTimestamp) {
-                if (!isset($pr["created_at"])) {
-                    return false;
-                }
-                
-                $createdTimestamp = strtotime($pr["created_at"]);
-                if ($createdTimestamp === false) {
-                    return false;
-                }
-                
-                return $createdTimestamp < $cutoffTimestamp;
-            });
     
-            return $this->saveToFile("1-old-pull-requests.txt", $oldPRs);
+            return $this->saveToFile("1-old-pull-requests.txt", $data);
         } catch (\Exception $e) {
             return response()->json(["message" => "Error while fetching old pull requests", "error" => $e->getMessage()]);
         }
