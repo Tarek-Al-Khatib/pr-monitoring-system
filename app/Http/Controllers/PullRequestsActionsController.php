@@ -13,6 +13,43 @@ class PullRequestsActionsController extends Controller
     private $issuesULR = "https://api.github.com/search/issues";
 
 
+    private function loopThroughResponse($q = null, $url) {
+        $data = [];
+        $page = 1;
+        do {
+            $params = [
+                "per_page" => 100,
+                "page" => $page,
+            ];
+            
+            if ($q != null) {
+                $params["q"] = $q;
+            }
+
+            $response = Http::withHeaders([
+                "Authorization" => "Bearer " . env("GITHUB_ACCESS_TOKEN"),
+                "Accept" => "application/vnd.github.v3+json"
+                ])->get($url, $params);
+                
+
+            if($q == null) {
+                $currentPageData = $response->json();
+            }
+            $responseData = $response->json();
+
+            if (isset($responseData["items"])) {
+                $currentPageData = $responseData["items"];
+            } else {
+                $currentPageData = $responseData;
+            }
+
+            $data = array_merge($data, $currentPageData);
+            $page++;
+        } while (!empty($currentPageData));
+
+        return $data;
+    }
+
     private function saveToFile($filename, $data)
     {
         $filePath = "github_reports/" . $filename;
@@ -27,26 +64,8 @@ class PullRequestsActionsController extends Controller
     }
     public function getOldRequests() {
         try {
-            $page = 1;
-            $data = [];
             $query = "repo:woocommerce/woocommerce type:pr is:open created:<" . now()->subDays(14)->format("Y-m-d");
-
-            do {
-                $response = Http::withHeaders([
-                    "Authorization" => "Bearer " . env("GITHUB_ACCESS_TOKEN"),
-                    "Accept" => "application/vnd.github.v3+json"
-                ])->get($this->issuesULR, [
-                    "q" => $query,
-                    "per_page" => 100,
-                    "page" => $page,
-                ]);
-                $currentPageData = $response->json()["items"];
-    
-                $data = array_merge($data, $currentPageData);
-                $page++;
-            } while (!empty($currentPageData));
-            
-    
+            $data = $this->loopThroughResponse($query, $this->issuesULR);
             return $this->saveToFile("1-old-pull-requests.txt", $data);
         } catch (\Exception $e) {
             return response()->json(["message" => "Error while fetching old pull requests", "error" => $e->getMessage()]);
@@ -56,26 +75,8 @@ class PullRequestsActionsController extends Controller
 
     public function getReviewRequiredRequests() {
         try {
-            $page = 1;
-            $data = [];
-            $query = "repo:woocommerce/woocommerce type:pr is:open review:required";
-    
-            do {
-                $response = Http::withHeaders([
-                    "Authorization" => "Bearer " . env("GITHUB_ACCESS_TOKEN"),
-                    "Accept" => "application/vnd.github.v3+json"
-                ])->get($this->issuesULR, [
-                    "q" => $query,
-                    "per_page" => 100,
-                    "page" => $page,
-                ]);
-    
-                $currentPageData = $response->json()["items"];
-                $data = array_merge($data, $currentPageData);
-                $page++;
-    
-            } while (!empty($currentPageData));
-    
+            $query = "repo:woocommerce/woocommerce type:pr is:open review:required";;
+            $data = $this->loopThroughResponse($query, $this->issuesULR);
             return $this->saveToFile("2-review-required-pull-requests.txt", $data);
         } catch (\Exception $e) {
             return response()->json(["message" => "Error fetching pull requests requiring review", "error" => $e->getMessage()]);
@@ -84,26 +85,8 @@ class PullRequestsActionsController extends Controller
     
     public function getSuccessfulReview() {
         try {
-            $page = 1;
-            $data = [];
             $query = "repo:woocommerce/woocommerce type:pr is:open status:success";
-    
-            do {
-                $response = Http::withHeaders([
-                    "Authorization" => "Bearer " . env("GITHUB_ACCESS_TOKEN"),
-                    "Accept" => "application/vnd.github.v3+json"
-                ])->get($this->issuesULR, [
-                    "q" => $query,
-                    "per_page" => 100,
-                    "page" => $page,
-                ]);
-    
-                $currentPageData = $response->json()["items"];
-                $data = array_merge($data, $currentPageData);
-                $page++;
-    
-            } while (!empty($currentPageData));
-    
+            $data = $this->loopThroughResponse($query, $this->issuesULR);
             return $this->saveToFile("3-successful-review-pull-requests.txt", $data);
         } catch (\Exception $e) {
             return response()->json(["message" => "Error fetching pull requests with successful review", "error" => $e->getMessage()]);
@@ -113,33 +96,13 @@ class PullRequestsActionsController extends Controller
 
     public function getNoReviewPRs() {
         try {
-            $page = 1;
-            $data = [];
-    
-            do {
-                $response = Http::withHeaders([
-                    "Authorization" => "Bearer " . env("GITHUB_ACCESS_TOKEN"),
-                    "Accept" => "application/vnd.github.v3+json"
-                ])->get($this->pullRequestURL, [
-                    "per_page" => 100,
-                    "state"=>"open",
-                    "page" => $page,
-                ]);
-    
-                $currentPageData = $response->json();
-                $data = array_merge($data, $currentPageData);
-                $page++;
-    
-            } while (!empty($currentPageData));
-
+            $data = $this->loopThroughResponse(null, $this->pullRequestURL);
             $unassignedPRs = array_filter($data, function ($pr) {
                 return empty($pr['requested_reviewers']) && empty($pr['requested_teams']);
             });
-    
-    
             return $this->saveToFile("4-no-reviewer-pull-requests.txt", $unassignedPRs);
         } catch (\Exception $e) {
-            return response()->json(["message" => "Error fetching pull requests with successful review", "error" => $e->getMessage()]);
+            return response()->json(["message" => "Error fetching pull requests with no reviews assigned", "error" => $e->getMessage()]);
         }
     }
 }
