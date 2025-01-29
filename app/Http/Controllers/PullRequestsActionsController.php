@@ -67,7 +67,7 @@ class PullRequestsActionsController extends Controller
                     'page' => $page,
                 ]);
     
-                $currentPageData = $response->json();
+                $currentPageData = $response->json()['items'];
                 $data = array_merge($data, $currentPageData);
                 $page++;
     
