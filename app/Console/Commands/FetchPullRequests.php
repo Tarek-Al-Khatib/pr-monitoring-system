@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Http\Controllers\PullRequestsActionsController;
 use Illuminate\Console\Command;
 
 class FetchPullRequests extends Command
@@ -11,20 +12,26 @@ class FetchPullRequests extends Command
      *
      * @var string
      */
-    protected $signature = 'app:fetch-pull-requests';
+    protected $signature = 'fetch:pullrequests';
 
     /**
      * The console command description.
      *
      * @var string
      */
-    protected $description = 'Command description';
+    protected $description = 'Fetch pull requests and save reports';
 
     /**
      * Execute the console command.
      */
     public function handle()
     {
-        //
+        $controller = new PullRequestsActionsController();
+        
+        $controller->getOldRequests();
+        $controller->getReviewRequiredRequests();
+        $controller->getSuccessfulReview();
+        $controller->getNoReviewPRs();
+        $this->info('GitHub Pull Request Reports updated successfully!');
     }
 }
