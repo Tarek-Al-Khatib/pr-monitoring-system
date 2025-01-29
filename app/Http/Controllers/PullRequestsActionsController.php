@@ -79,5 +79,31 @@ class PullRequestsActionsController extends Controller
         }
     }
     
+    public function getSuccessfulReview() {
+        try {
+            $page = 1;
+            $data = [];
+            $query = "repo:woocommerce/woocommerce type:pr is:open status:success";
     
+            do {
+                $response = Http::withHeaders([
+                    'Authorization' => 'Bearer ' . env('GITHUB_ACCESS_TOKEN'),
+                    'Accept' => 'application/vnd.github.v3+json'
+                ])->get($this->issuesULR, [
+                    'q' => $query,
+                    'per_page' => 100,
+                    'page' => $page,
+                ]);
+    
+                $currentPageData = $response->json()['items'];
+                $data = array_merge($data, $currentPageData);
+                $page++;
+    
+            } while (!empty($currentPageData));
+    
+            return response()->json(array_values($data));
+        } catch (\Exception $e) {
+            return response()->json(["message" => "Error fetching pull requests requiring review", "error" => $e->getMessage()], 500);
+        }
+    }
 }
