@@ -5,12 +5,26 @@ namespace App\Http\Controllers;
 use Carbon\Carbon;
 use Http;
 use Illuminate\Http\Request;
+use Storage;
 
 class PullRequestsActionsController extends Controller
 {
     private $pullRequestURL = "https://api.github.com/repos/woocommerce/woocommerce/pulls";
     private $issuesULR = "https://api.github.com/search/issues";
 
+
+    private function saveToFile($filename, $data)
+    {
+        $filePath = "github_reports/" . $filename;
+        $content = "Total Pull Requests: " . count($data) . "\n\n";
+
+        foreach ($data as $pr) {
+            $content .= "* PR# " . $pr["number"] . " - " . $pr["title"] . " - " . "URL: " . $pr["html_url"] . "\n";
+        }
+
+        Storage::put($filePath, $content);
+        return response()->json(["message" => "File saved: " . $filePath]);
+    }
     public function getOldRequests() {
         try {
             $page = 1;
@@ -44,7 +58,7 @@ class PullRequestsActionsController extends Controller
                 return $createdTimestamp < $cutoffTimestamp;
             });
     
-            return response()->json(array_values($oldPRs));
+            return $this->saveToFile("1-old-pull-requests.txt", $oldPRs);
         } catch (\Exception $e) {
             return response()->json(["message" => "Error while fetching old pull requests", "error" => $e->getMessage()]);
         }
@@ -73,7 +87,7 @@ class PullRequestsActionsController extends Controller
     
             } while (!empty($currentPageData));
     
-            return response()->json(array_values($data));
+            return $this->saveToFile("2-review-required-pull-requests.txt", $data);
         } catch (\Exception $e) {
             return response()->json(["message" => "Error fetching pull requests requiring review", "error" => $e->getMessage()]);
         }
@@ -101,7 +115,7 @@ class PullRequestsActionsController extends Controller
     
             } while (!empty($currentPageData));
     
-            return response()->json(array_values($data));
+            return $this->saveToFile("3-successful-review-pull-requests.txt", $data);
         } catch (\Exception $e) {
             return response()->json(["message" => "Error fetching pull requests with successful review", "error" => $e->getMessage()]);
         }
@@ -134,7 +148,7 @@ class PullRequestsActionsController extends Controller
             });
     
     
-            return response()->json(array_values($unassignedPRs));
+            return $this->saveToFile("4-no-reviewer-pull-requests.txt", $unassignedPRs);
         } catch (\Exception $e) {
             return response()->json(["message" => "Error fetching pull requests with successful review", "error" => $e->getMessage()]);
         }
