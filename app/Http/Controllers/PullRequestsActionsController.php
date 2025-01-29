@@ -1,10 +1,8 @@
 <?php
 
 namespace App\Http\Controllers;
-
-use Carbon\Carbon;
 use Http;
-use Illuminate\Http\Request;
+use Revolution\Google\Sheets\Facades\Sheets;
 use Storage;
 
 class PullRequestsActionsController extends Controller
@@ -63,6 +61,12 @@ class PullRequestsActionsController extends Controller
         return response()->json(["message" => "File saved: " . $filePath]);
     }
     public function getOldRequests() {
+        // $sheet = Sheets::spreadsheet("1fp2OdjbhVw_Y03mxB9nBvb478CR1wFd9wQHAyLAxh1U")->sheet("old")->get();
+        // $header = $sheet->pull(0);
+        // $values = Sheets::collection($header, $sheet);
+        // $values->toArray();
+
+        // dd($values);
         try {
             $query = "repo:woocommerce/woocommerce type:pr is:open created:<" . now()->subDays(14)->format("Y-m-d");
             $data = $this->loopThroughResponse($query, $this->issuesULR);
