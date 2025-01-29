@@ -8,7 +8,8 @@ use Illuminate\Http\Request;
 
 class PullRequestsActionsController extends Controller
 {
-    private $repoUrl = "https://api.github.com/repos/woocommerce/woocommerce/pulls";
+    private $pullRequestURL = "https://api.github.com/repos/woocommerce/woocommerce/pulls";
+    private $issuesULR = "https://api.github.com/search/issues";
 
     public function getOldRequests() {
         try {
@@ -20,9 +21,9 @@ class PullRequestsActionsController extends Controller
                 $response = Http::withHeaders([
                     'Authorization' => 'Bearer ' . env('GITHUB_ACCESS_TOKEN'),
                     'Accept' => 'application/vnd.github.v3+json'
-                ])->get($this->repoUrl, [
-                    'per_page' => 30,
-                    'page' => $page
+                ])->get($this->pullRequestURL, [
+                    'per_page' => 100,
+                    'page' => $page,
                 ]);
                 $currentPageData = $response->json();
     
@@ -48,5 +49,35 @@ class PullRequestsActionsController extends Controller
             return response()->json(["message" => "Error while fetching old pull requests", "error" => $e->getMessage()]);
         }
     }
+
+
+    public function getReviewRequiredRequests() {
+        try {
+            $page = 1;
+            $data = [];
+            $query = "repo:woocommerce/woocommerce type:pr is:open review:required";
+    
+            do {
+                $response = Http::withHeaders([
+                    'Authorization' => 'Bearer ' . env('GITHUB_ACCESS_TOKEN'),
+                    'Accept' => 'application/vnd.github.v3+json'
+                ])->get($this->issuesULR, [
+                    'q' => $query,
+                    'per_page' => 100,
+                    'page' => $page,
+                ]);
+    
+                $currentPageData = $response->json();
+                $data = array_merge($data, $currentPageData);
+                $page++;
+    
+            } while (!empty($currentPageData));
+    
+            return response()->json(array_values($data));
+        } catch (\Exception $e) {
+            return response()->json(["message" => "Error fetching pull requests requiring review", "error" => $e->getMessage()], 500);
+        }
+    }
+    
     
 }
