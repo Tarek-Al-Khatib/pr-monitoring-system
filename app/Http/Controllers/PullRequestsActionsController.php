@@ -15,15 +15,15 @@ class PullRequestsActionsController extends Controller
         try {
             $page = 1;
             $data = [];
-            $cutoffTimestamp = strtotime(gmdate('Y-m-d H:i:s')) - (14 * 24 * 60 * 60);
+            $cutoffTimestamp = strtotime(gmdate("Y-m-d H:i:s")) - (14 * 24 * 60 * 60);
 
             do {
                 $response = Http::withHeaders([
-                    'Authorization' => 'Bearer ' . env('GITHUB_ACCESS_TOKEN'),
-                    'Accept' => 'application/vnd.github.v3+json'
+                    "Authorization" => "Bearer " . env("GITHUB_ACCESS_TOKEN"),
+                    "Accept" => "application/vnd.github.v3+json"
                 ])->get($this->pullRequestURL, [
-                    'per_page' => 100,
-                    'page' => $page,
+                    "per_page" => 100,
+                    "page" => $page,
                 ]);
                 $currentPageData = $response->json();
     
@@ -32,11 +32,11 @@ class PullRequestsActionsController extends Controller
             } while (!empty($currentPageData));
             
             $oldPRs = array_filter($data, function ($pr) use ($cutoffTimestamp) {
-                if (!isset($pr['created_at'])) {
+                if (!isset($pr["created_at"])) {
                     return false;
                 }
                 
-                $createdTimestamp = strtotime($pr['created_at']);
+                $createdTimestamp = strtotime($pr["created_at"]);
                 if ($createdTimestamp === false) {
                     return false;
                 }
@@ -59,15 +59,15 @@ class PullRequestsActionsController extends Controller
     
             do {
                 $response = Http::withHeaders([
-                    'Authorization' => 'Bearer ' . env('GITHUB_ACCESS_TOKEN'),
-                    'Accept' => 'application/vnd.github.v3+json'
+                    "Authorization" => "Bearer " . env("GITHUB_ACCESS_TOKEN"),
+                    "Accept" => "application/vnd.github.v3+json"
                 ])->get($this->issuesULR, [
-                    'q' => $query,
-                    'per_page' => 100,
-                    'page' => $page,
+                    "q" => $query,
+                    "per_page" => 100,
+                    "page" => $page,
                 ]);
     
-                $currentPageData = $response->json()['items'];
+                $currentPageData = $response->json()["items"];
                 $data = array_merge($data, $currentPageData);
                 $page++;
     
@@ -75,7 +75,7 @@ class PullRequestsActionsController extends Controller
     
             return response()->json(array_values($data));
         } catch (\Exception $e) {
-            return response()->json(["message" => "Error fetching pull requests requiring review", "error" => $e->getMessage()], 500);
+            return response()->json(["message" => "Error fetching pull requests requiring review", "error" => $e->getMessage()]);
         }
     }
     
@@ -87,15 +87,15 @@ class PullRequestsActionsController extends Controller
     
             do {
                 $response = Http::withHeaders([
-                    'Authorization' => 'Bearer ' . env('GITHUB_ACCESS_TOKEN'),
-                    'Accept' => 'application/vnd.github.v3+json'
+                    "Authorization" => "Bearer " . env("GITHUB_ACCESS_TOKEN"),
+                    "Accept" => "application/vnd.github.v3+json"
                 ])->get($this->issuesULR, [
-                    'q' => $query,
-                    'per_page' => 100,
-                    'page' => $page,
+                    "q" => $query,
+                    "per_page" => 100,
+                    "page" => $page,
                 ]);
     
-                $currentPageData = $response->json()['items'];
+                $currentPageData = $response->json()["items"];
                 $data = array_merge($data, $currentPageData);
                 $page++;
     
@@ -103,7 +103,40 @@ class PullRequestsActionsController extends Controller
     
             return response()->json(array_values($data));
         } catch (\Exception $e) {
-            return response()->json(["message" => "Error fetching pull requests requiring review", "error" => $e->getMessage()], 500);
+            return response()->json(["message" => "Error fetching pull requests with successful review", "error" => $e->getMessage()]);
+        }
+    }
+
+
+    public function getNoReviewPRs() {
+        try {
+            $page = 1;
+            $data = [];
+    
+            do {
+                $response = Http::withHeaders([
+                    "Authorization" => "Bearer " . env("GITHUB_ACCESS_TOKEN"),
+                    "Accept" => "application/vnd.github.v3+json"
+                ])->get($this->pullRequestURL, [
+                    "per_page" => 100,
+                    "state"=>"open",
+                    "page" => $page,
+                ]);
+    
+                $currentPageData = $response->json();
+                $data = array_merge($data, $currentPageData);
+                $page++;
+    
+            } while (!empty($currentPageData));
+
+            $unassignedPRs = array_filter($data, function ($pr) {
+                return empty($pr['requested_reviewers']) && empty($pr['requested_teams']);
+            });
+    
+    
+            return response()->json(array_values($unassignedPRs));
+        } catch (\Exception $e) {
+            return response()->json(["message" => "Error fetching pull requests with successful review", "error" => $e->getMessage()]);
         }
     }
 }
