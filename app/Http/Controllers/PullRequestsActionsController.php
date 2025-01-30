@@ -49,17 +49,22 @@ class PullRequestsActionsController extends Controller
     }
 
     private function saveToSpreadSheet($sheetname, $data){
-        try{        
-            $sheet = Sheets::spreadsheet(env("SPREADSHEET_ID"))->sheet($sheetname)->clear();
+        try{
+            $spreadsheet = Sheets::spreadsheet(env("SPREADSHEET_ID"));
+            $allSheets = $spreadsheet->sheetList();
+
+            if(!in_array($sheetname, $allSheets)){
+                $spreadsheet->addSheet($sheetname);
+            }
+
+            $spreadsheet->sheet($sheetname)->clear();
+
             $appendableData = [["PR#", "PR Title", "URL"]];
             foreach($data as $pr){
                 $appendableData[] = [$pr["number"], $pr["title"], $pr["url"]];
             }
-            $sheet = Sheets::spreadsheet(env("SPREADSHEET_ID"))->sheet($sheetname)->append($appendableData);
-            $sheet = Sheets::spreadsheet(env("SPREADSHEET_ID"))->sheet($sheetname)->get();
-            $header = $sheet->pull(0);
-            $values = Sheets::collection($header, $sheet);
-            $data = array_values($values->toArray());
+
+            $sheet = $spreadsheet->sheet($sheetname)->append($appendableData);
             return true;
         }catch(\Exception $e) {
             return "Error saving to spreadsheet" . $e->__tostring();
