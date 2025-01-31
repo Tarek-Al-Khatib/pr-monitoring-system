@@ -10,6 +10,12 @@ class PullRequestsActionsController extends Controller
     private $pullRequestURL = "https://api.github.com/repos/woocommerce/woocommerce/pulls";
     private $issuesULR = "https://api.github.com/search/issues";
 
+    // private function getPullRequests(){
+    //     $spreadsheet = Sheets::spreadsheet(env("PRs_SPREADSHEET_ID"))->sheet("pull_requests");
+    //     $sheetData = $spreadsheet->all();
+    //     $data = array_values($sheetData);
+    //     dd($sheetData);
+    // }
 
     private function loopThroughResponse($q, $url) {
         $data = [];
